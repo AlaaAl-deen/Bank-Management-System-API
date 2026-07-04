@@ -11,7 +11,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <Folder Include="Modules\Accounts\" />
+    <Folder Include="Modules\Beneficiaries\" />
+    <Folder Include="Modules\Dashboard\" />
+    <Folder Include="Modules\Roles\" />
+    <Folder Include="Modules\Transactions\" />
+    <Folder Include="Modules\Users\Responses\" />
+    <Folder Include="Modules\Users\Requests\" />
   </ItemGroup>
 
 </Project>
