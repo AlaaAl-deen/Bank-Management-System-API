@@ -54,6 +54,28 @@ namespace BankManagementSystem.Modules.Users.Services
             }
         }
 
+        private int GenerateCustomerNumber()
+        {
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                const string query = @"SELECT MAX(CustomerNumber) FROM Users";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    object result = command.ExecuteScalar();
+
+                    if (result == DBNull.Value || result == null)
+                    {
+                        return 100001;
+                    }
+
+                    return Convert.ToInt32(result) + 1;
+                }
+            }
+        }
+
 
     }
 }
