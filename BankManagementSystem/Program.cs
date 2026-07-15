@@ -1,3 +1,4 @@
+using BankManagementSystem.Database;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -21,5 +22,11 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+//app.MapControllers();
+
+
+DatabaseTest test = new DatabaseTest();
+test.TestConnection();
 
 app.Run();
