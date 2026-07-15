@@ -1,6 +1,5 @@
 ﻿using BankManagementSystem.Database;
-using Microsoft.Data.SqlClient;
-
+using System.Data.SqlClient;
 namespace BankManagementSystem.Common
 {
     public abstract class BaseService

@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using System.Data.SqlClient;
 namespace BankManagementSystem.Database
 {
     public class DatabaseConnection

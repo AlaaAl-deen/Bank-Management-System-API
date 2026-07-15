@@ -23,10 +23,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-//app.MapControllers();
-
-
-DatabaseTest test = new DatabaseTest();
-test.TestConnection();
-
 app.Run();

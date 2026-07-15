@@ -2,9 +2,10 @@
 using BankManagementSystem.Database;
 using BankManagementSystem.Modules.Users.Requests;
 using BankManagementSystem.Modules.Users.Responses;
-using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using BCrypt.Net;
 using BankManagementSystem.Modules.Users.Models;
+using BankManagementSystem.Common.Constants;
 
 namespace BankManagementSystem.Modules.Users.Services
 {
@@ -54,6 +55,7 @@ namespace BankManagementSystem.Modules.Users.Services
                     return count > 0;
                 }
             }
+
         }
 
         private int GenerateCustomerNumber()
@@ -74,6 +76,7 @@ namespace BankManagementSystem.Modules.Users.Services
                     }
 
                     return Convert.ToInt32(result) + 1;
+
                 }
             }
 
@@ -207,6 +210,82 @@ namespace BankManagementSystem.Modules.Users.Services
             }
 
             return accountNumber;
+        }
+
+        public CreateUserResponse CreateUser(CreateUserRequest request)
+        {
+            CreateUserResponse response = new CreateUserResponse();
+
+            try
+            {
+                // التحقق من البيانات
+                ValidateRequest(request);
+
+                // إنشاء كائن المستخدم
+                User user = new User
+                {
+                    CustomerNumber = GenerateCustomerNumber(),
+
+                    FirstName = request.FirstName,
+                    SecondName = request.SecondName,
+                    ThirdName = request.ThirdName,
+                    LastName = request.LastName,
+
+                    PhoneNumber = request.PhoneNumber,
+                    Address = request.Address,
+
+                    PasswordHash = HashPassword("123456"),
+
+                    MustChangePassword = true,
+
+                    RoleId = Roles.Customer,
+
+                    IsActive = true,
+
+                    CreatedAt = DateTime.Now
+                };
+
+                using (SqlConnection connection = GetConnection())
+                {
+                    connection.Open();
+
+                    SqlTransaction transaction = connection.BeginTransaction();
+
+                    try
+                    {
+                        // إنشاء المستخدم
+                        int userId = InsertUser(user, connection, transaction);
+
+                        // إنشاء الحساب الافتراضي
+                        long accountNumber = CreateDefaultAccount(
+                            userId,
+                            connection,
+                            transaction);
+
+                        // حفظ جميع العمليات
+                        transaction.Commit();
+
+                        response.Success = true;
+                        response.Message = "Customer created successfully.";
+
+                        response.UserId = userId;
+                        response.CustomerNumber = user.CustomerNumber;
+                        response.AccountNumber = accountNumber;
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = ex.Message;
+            }
+
+            return response;
         }
 
 
