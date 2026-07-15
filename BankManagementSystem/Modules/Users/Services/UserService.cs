@@ -3,6 +3,7 @@ using BankManagementSystem.Database;
 using BankManagementSystem.Modules.Users.Requests;
 using BankManagementSystem.Modules.Users.Responses;
 using Microsoft.Data.SqlClient;
+using BCrypt.Net;
 
 namespace BankManagementSystem.Modules.Users.Services
 {
@@ -74,6 +75,12 @@ namespace BankManagementSystem.Modules.Users.Services
                     return Convert.ToInt32(result) + 1;
                 }
             }
+
+        }
+
+        private string HashPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
 
