@@ -4,6 +4,7 @@ using BankManagementSystem.Modules.Users.Requests;
 using BankManagementSystem.Modules.Users.Responses;
 using Microsoft.Data.SqlClient;
 using BCrypt.Net;
+using BankManagementSystem.Modules.Users.Models;
 
 namespace BankManagementSystem.Modules.Users.Services
 {
@@ -81,6 +82,64 @@ namespace BankManagementSystem.Modules.Users.Services
         private string HashPassword(string password)
         {
             return BCrypt.Net.BCrypt.HashPassword(password);
+        }
+
+
+        private int InsertUser(User user)
+        {
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                const string query = @"
+        INSERT INTO Users
+        (
+            CustomerNumber,
+            FirstName,
+            SecondName,
+            ThirdName,
+            LastName,
+            PhoneNumber,
+            Address,
+            PasswordHash,
+            RoleId,
+            IsActive,
+            MustChangePassword
+        )
+        VALUES
+        (
+            @CustomerNumber,
+            @FirstName,
+            @SecondName,
+            @ThirdName,
+            @LastName,
+            @PhoneNumber,
+            @Address,
+            @PasswordHash,
+            @RoleId,
+            @IsActive,
+            @MustChangePassword
+        );
+
+        SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@CustomerNumber", user.CustomerNumber);
+                    command.Parameters.AddWithValue("@FirstName", user.FirstName);
+                    command.Parameters.AddWithValue("@SecondName", user.SecondName);
+                    command.Parameters.AddWithValue("@ThirdName", user.ThirdName);
+                    command.Parameters.AddWithValue("@LastName", user.LastName);
+                    command.Parameters.AddWithValue("@PhoneNumber", user.PhoneNumber);
+                    command.Parameters.AddWithValue("@Address", user.Address);
+                    command.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
+                    command.Parameters.AddWithValue("@RoleId", user.RoleId);
+                    command.Parameters.AddWithValue("@IsActive", user.IsActive);
+                    command.Parameters.AddWithValue("@MustChangePassword", user.MustChangePassword);
+
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
         }
 
 
