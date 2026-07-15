@@ -102,9 +102,10 @@ namespace BankManagementSystem.Modules.Users.Services
             PhoneNumber,
             Address,
             PasswordHash,
+            MustChangePassword,
             RoleId,
             IsActive,
-            MustChangePassword
+            CreatedAt
         )
         VALUES
         (
@@ -116,9 +117,10 @@ namespace BankManagementSystem.Modules.Users.Services
             @PhoneNumber,
             @Address,
             @PasswordHash,
+            @MustChangePassword,
             @RoleId,
             @IsActive,
-            @MustChangePassword
+            @CreatedAt
         );
 
         SELECT CAST(SCOPE_IDENTITY() AS INT);";
@@ -133,11 +135,36 @@ namespace BankManagementSystem.Modules.Users.Services
                     command.Parameters.AddWithValue("@PhoneNumber", user.PhoneNumber);
                     command.Parameters.AddWithValue("@Address", user.Address);
                     command.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
+                    command.Parameters.AddWithValue("@MustChangePassword", user.MustChangePassword);
                     command.Parameters.AddWithValue("@RoleId", user.RoleId);
                     command.Parameters.AddWithValue("@IsActive", user.IsActive);
-                    command.Parameters.AddWithValue("@MustChangePassword", user.MustChangePassword);
+                    command.Parameters.AddWithValue("@CreatedAt", user.CreatedAt);
 
                     return Convert.ToInt32(command.ExecuteScalar());
+                }
+            }
+        }
+
+        private long GenerateAccountNumber()
+        {
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                const string query = @"
+            SELECT MAX(AccountNumber)
+            FROM Accounts";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    object result = command.ExecuteScalar();
+
+                    if (result == DBNull.Value || result == null)
+                    {
+                        return 1000000001;
+                    }
+
+                    return Convert.ToInt64(result) + 1;
                 }
             }
         }
