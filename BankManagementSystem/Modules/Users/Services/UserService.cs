@@ -1,17 +1,38 @@
-﻿using BankManagementSystem.Database;
+﻿using BankManagementSystem.Common;
+using BankManagementSystem.Database;
+using BankManagementSystem.Modules.Users.Requests;
 using BankManagementSystem.Modules.Users.Responses;
 
 namespace BankManagementSystem.Modules.Users.Services
 {
-    public class UserService
+    public class UserService : BaseService
     {
-        private readonly DatabaseConnection _database;
-
-        public UserService()
+        private void ValidateRequest(CreateUserRequest request)
         {
-            _database = new DatabaseConnection();
+            if (request == null)
+                throw new Exception("Request cannot be null.");
+
+            if (string.IsNullOrWhiteSpace(request.FirstName))
+                throw new Exception("First name is required.");
+
+            if (string.IsNullOrWhiteSpace(request.SecondName))
+                throw new Exception("Second name is required.");
+
+            if (string.IsNullOrWhiteSpace(request.ThirdName))
+                throw new Exception("Third name is required.");
+
+            if (string.IsNullOrWhiteSpace(request.LastName))
+                throw new Exception("Last name is required.");
+
+            if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+                throw new Exception("Phone number is required.");
+
+            if (string.IsNullOrWhiteSpace(request.Address))
+                throw new Exception("Address is required.");
+
+            if (IsPhoneNumberExists(request.PhoneNumber))
+                throw new Exception("Phone number already exists.");
         }
 
-       
     }
 }
