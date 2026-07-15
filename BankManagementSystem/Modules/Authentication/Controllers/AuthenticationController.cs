@@ -1,6 +1,38 @@
-﻿namespace BankManagementSystem.Modules.Authentication.Controllers
+﻿using BankManagementSystem.Modules.Authentication.Requests;
+using BankManagementSystem.Modules.Authentication.Responses;
+using BankManagementSystem.Modules.Authentication.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BankManagementSystem.Modules.Authentication.Controllers
 {
-    public class AuthenticationController
+    [ApiController]
+    [Route("api/auth")]
+    public class AuthenticationController : ControllerBase
     {
+        private readonly AuthenticationService _authenticationService;
+
+        public AuthenticationController()
+        {
+            _authenticationService = new AuthenticationService();
+        }
+
+        [HttpPost("login")]
+        public ActionResult<LoginResponse> Login([FromBody] LoginRequest request)
+        {
+            LoginResponse response = _authenticationService.Login(request);
+
+            if (!response.Success)
+            {
+                if (response.Message == "Invalid password." ||
+                    response.Message == "Customer not found.")
+                {
+                    return Unauthorized(response);
+                }
+
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
     }
 }

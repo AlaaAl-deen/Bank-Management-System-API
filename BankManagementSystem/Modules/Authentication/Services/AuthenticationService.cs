@@ -50,6 +50,10 @@ namespace BankManagementSystem.Modules.Authentication.Services
 
                 response.Success = true;
                 response.Message = "Login successful.";
+                response.UserId = user.UserId;
+                response.CustomerNumber = user.CustomerNumber;
+                response.RoleId = user.RoleId;
+                response.MustChangePassword = user.MustChangePassword;
             }
             catch (Exception ex)
             {
