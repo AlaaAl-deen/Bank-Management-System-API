@@ -85,63 +85,61 @@ namespace BankManagementSystem.Modules.Users.Services
         }
 
 
-        private int InsertUser(User user)
+        private int InsertUser(
+    User user,
+    SqlConnection connection,
+    SqlTransaction transaction)
         {
-            using (SqlConnection connection = GetConnection())
+            const string query = @"
+    INSERT INTO Users
+    (
+        CustomerNumber,
+        FirstName,
+        SecondName,
+        ThirdName,
+        LastName,
+        PhoneNumber,
+        Address,
+        PasswordHash,
+        MustChangePassword,
+        RoleId,
+        IsActive,
+        CreatedAt
+    )
+    VALUES
+    (
+        @CustomerNumber,
+        @FirstName,
+        @SecondName,
+        @ThirdName,
+        @LastName,
+        @PhoneNumber,
+        @Address,
+        @PasswordHash,
+        @MustChangePassword,
+        @RoleId,
+        @IsActive,
+        @CreatedAt
+    );
+
+    SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            using (SqlCommand command = new SqlCommand(query, connection, transaction))
             {
-                connection.Open();
+                command.Parameters.AddWithValue("@CustomerNumber", user.CustomerNumber);
+                command.Parameters.AddWithValue("@FirstName", user.FirstName);
+                command.Parameters.AddWithValue("@SecondName", user.SecondName);
+                command.Parameters.AddWithValue("@ThirdName", user.ThirdName);
+                command.Parameters.AddWithValue("@LastName", user.LastName);
+                command.Parameters.AddWithValue("@PhoneNumber", user.PhoneNumber);
+                command.Parameters.AddWithValue("@Address", user.Address);
+                command.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
+                command.Parameters.AddWithValue("@MustChangePassword", user.MustChangePassword);
+                command.Parameters.AddWithValue("@RoleId", user.RoleId);
+                command.Parameters.AddWithValue("@IsActive", user.IsActive);
+                command.Parameters.AddWithValue("@CreatedAt", user.CreatedAt);
 
-                const string query = @"
-        INSERT INTO Users
-        (
-            CustomerNumber,
-            FirstName,
-            SecondName,
-            ThirdName,
-            LastName,
-            PhoneNumber,
-            Address,
-            PasswordHash,
-            MustChangePassword,
-            RoleId,
-            IsActive,
-            CreatedAt
-        )
-        VALUES
-        (
-            @CustomerNumber,
-            @FirstName,
-            @SecondName,
-            @ThirdName,
-            @LastName,
-            @PhoneNumber,
-            @Address,
-            @PasswordHash,
-            @MustChangePassword,
-            @RoleId,
-            @IsActive,
-            @CreatedAt
-        );
-
-        SELECT CAST(SCOPE_IDENTITY() AS INT);";
-
-                using (SqlCommand command = new SqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@CustomerNumber", user.CustomerNumber);
-                    command.Parameters.AddWithValue("@FirstName", user.FirstName);
-                    command.Parameters.AddWithValue("@SecondName", user.SecondName);
-                    command.Parameters.AddWithValue("@ThirdName", user.ThirdName);
-                    command.Parameters.AddWithValue("@LastName", user.LastName);
-                    command.Parameters.AddWithValue("@PhoneNumber", user.PhoneNumber);
-                    command.Parameters.AddWithValue("@Address", user.Address);
-                    command.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
-                    command.Parameters.AddWithValue("@MustChangePassword", user.MustChangePassword);
-                    command.Parameters.AddWithValue("@RoleId", user.RoleId);
-                    command.Parameters.AddWithValue("@IsActive", user.IsActive);
-                    command.Parameters.AddWithValue("@CreatedAt", user.CreatedAt);
-
-                    return Convert.ToInt32(command.ExecuteScalar());
-                }
+                return Convert.ToInt32(command.ExecuteScalar());
             }
         }
 
@@ -167,6 +165,48 @@ namespace BankManagementSystem.Modules.Users.Services
                     return Convert.ToInt64(result) + 1;
                 }
             }
+        }
+
+        private long CreateDefaultAccount(
+     int userId,
+     SqlConnection connection,
+     SqlTransaction transaction)
+        {
+            long accountNumber = GenerateAccountNumber();
+
+            const string query = @"
+    INSERT INTO Accounts
+    (
+        AccountNumber,
+        UserId,
+        CurrencyId,
+        Balance,
+        AccountStatusId,
+        CreatedAt
+    )
+    VALUES
+    (
+        @AccountNumber,
+        @UserId,
+        @CurrencyId,
+        @Balance,
+        @AccountStatusId,
+        @CreatedAt
+    );";
+
+            using (SqlCommand command = new SqlCommand(query, connection, transaction))
+            {
+                command.Parameters.AddWithValue("@AccountNumber", accountNumber);
+                command.Parameters.AddWithValue("@UserId", userId);
+                command.Parameters.AddWithValue("@CurrencyId", 1);
+                command.Parameters.AddWithValue("@Balance", 0m);
+                command.Parameters.AddWithValue("@AccountStatusId", 1);
+                command.Parameters.AddWithValue("@CreatedAt", DateTime.Now);
+
+                command.ExecuteNonQuery();
+            }
+
+            return accountNumber;
         }
 
 
