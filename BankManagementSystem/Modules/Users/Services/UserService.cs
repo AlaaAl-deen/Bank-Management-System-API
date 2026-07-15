@@ -2,6 +2,7 @@
 using BankManagementSystem.Database;
 using BankManagementSystem.Modules.Users.Requests;
 using BankManagementSystem.Modules.Users.Responses;
+using Microsoft.Data.SqlClient;
 
 namespace BankManagementSystem.Modules.Users.Services
 {
@@ -33,6 +34,26 @@ namespace BankManagementSystem.Modules.Users.Services
             if (IsPhoneNumberExists(request.PhoneNumber))
                 throw new Exception("Phone number already exists.");
         }
+
+        private bool IsPhoneNumberExists(string phoneNumber)
+        {
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                string query = @"SELECT COUNT(*) FROM Users WHERE PhoneNumber = @PhoneNumber";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@PhoneNumber", phoneNumber);
+
+                    int count = Convert.ToInt32(command.ExecuteScalar());
+
+                    return count > 0;
+                }
+            }
+        }
+
 
     }
 }
