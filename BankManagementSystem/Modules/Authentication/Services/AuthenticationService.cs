@@ -44,6 +44,7 @@ namespace BankManagementSystem.Modules.Authentication.Services
                 }
 
                 // 4. التحقق من حالة الحساب
+                CheckUserStatus(user);
 
                 // 5. إنشاء الاستجابة
 
@@ -119,6 +120,14 @@ namespace BankManagementSystem.Modules.Authentication.Services
         private bool VerifyPassword(string password, string passwordHash)
         {
             return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+        }
+
+        private void CheckUserStatus(User user)
+        {
+            if (!user.IsActive)
+            {
+                throw new Exception("This account is inactive.");
+            }
         }
 
 
