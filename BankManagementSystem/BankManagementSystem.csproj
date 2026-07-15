@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <Folder Include="Modules\Accounts\" />
+    <Folder Include="Modules\Authentication\Models\" />
     <Folder Include="Modules\Beneficiaries\" />
     <Folder Include="Modules\Dashboard\" />
     <Folder Include="Modules\Roles\" />
