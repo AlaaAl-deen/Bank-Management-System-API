@@ -107,5 +107,27 @@ namespace BankManagementSystem.Modules.Accounts.Services
             }
         }
 
+        private bool IsCurrencyExists(int currencyId)
+        {
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                const string query = @"
+        SELECT COUNT(*)
+        FROM Currencies
+        WHERE CurrencyId = @CurrencyId";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@CurrencyId", currencyId);
+
+                    int count = Convert.ToInt32(command.ExecuteScalar());
+
+                    return count > 0;
+                }
+            }
+        }
+
     }
 }
