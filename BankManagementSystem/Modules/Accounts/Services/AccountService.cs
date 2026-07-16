@@ -53,7 +53,40 @@ namespace BankManagementSystem.Modules.Accounts.Services
 
             return accounts;
         }
+        public GetAccountsResponse GetAccounts(int customerNumber)
+        {
+            GetAccountsResponse response = new GetAccountsResponse();
 
+            try
+            {
+                if (customerNumber <= 0)
+                {
+                    throw new Exception("Customer number is required.");
+                }
+
+                List<AccountResponse> accounts =
+                    GetAccountsByCustomerNumber(customerNumber);
+
+                response.Success = true;
+                response.Accounts = accounts;
+
+                if (accounts.Count == 0)
+                {
+                    response.Message = "No accounts found for this customer.";
+                }
+                else
+                {
+                    response.Message = "Accounts retrieved successfully.";
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = ex.Message;
+            }
+
+            return response;
+        }
 
     }
 }
