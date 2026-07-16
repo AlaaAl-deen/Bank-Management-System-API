@@ -1,4 +1,5 @@
 ﻿using BankManagementSystem.Common;
+using BankManagementSystem.Common.Security;
 using BankManagementSystem.Modules.Authentication.Requests;
 using BankManagementSystem.Modules.Authentication.Responses;
 using BankManagementSystem.Modules.Users.Models;
@@ -38,7 +39,7 @@ namespace BankManagementSystem.Modules.Authentication.Services
 
                 // 3. التحقق من كلمة المرور
 
-                if (!VerifyPassword(request.Password, user.PasswordHash))
+                if (!PasswordHelper.VerifyPassword(request.Password, user.PasswordHash))
                 {
                     throw new Exception("Invalid password.");
                 }
@@ -121,10 +122,10 @@ namespace BankManagementSystem.Modules.Authentication.Services
                 }
             }
         }
-        private bool VerifyPassword(string password, string passwordHash)
-        {
-            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
-        }
+        //private bool VerifyPassword(string password, string passwordHash)
+        //{
+        //    return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+        //}
 
         private void CheckUserStatus(User user)
         {
@@ -185,6 +186,47 @@ namespace BankManagementSystem.Modules.Authentication.Services
                     }
                 }
             }
+        }
+
+        public ChangePasswordResponse ChangePassword(ChangePasswordRequest request)
+        {
+            ChangePasswordResponse response = new ChangePasswordResponse();
+
+            try
+            {
+                // 1. التحقق من صحة البيانات
+                ValidateChangePasswordRequest(request);
+
+                // 2. البحث عن المستخدم
+                User? user = GetUserByCustomerNumber(request.CustomerNumber);
+
+                if (user == null)
+                {
+                    throw new Exception("Customer not found.");
+                }
+
+                // 3. التحقق من كلمة المرور الحالية
+                if (!PasswordHelper.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+                {
+                    throw new Exception("Current password is incorrect.");
+                }
+
+                // 4. تشفير كلمة المرور الجديدة
+                string newPasswordHash = PasswordHelper.HashPassword(request.NewPassword);
+                // 5. تحديث كلمة المرور
+                UpdatePassword(user.UserId, newPasswordHash);
+
+                // 6. تجهيز الاستجابة
+                response.Success = true;
+                response.Message = "Password changed successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = ex.Message;
+            }
+
+            return response;
         }
 
 

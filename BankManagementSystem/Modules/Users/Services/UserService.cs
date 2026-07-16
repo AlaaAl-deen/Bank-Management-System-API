@@ -6,6 +6,7 @@ using System.Data.SqlClient;
 using BCrypt.Net;
 using BankManagementSystem.Modules.Users.Models;
 using BankManagementSystem.Common.Constants;
+using BankManagementSystem.Common.Security;
 
 namespace BankManagementSystem.Modules.Users.Services
 {
@@ -82,10 +83,10 @@ namespace BankManagementSystem.Modules.Users.Services
 
         }
 
-        private string HashPassword(string password)
-        {
-            return BCrypt.Net.BCrypt.HashPassword(password);
-        }
+        //private string HashPassword(string password)
+        //{
+        //    return BCrypt.Net.BCrypt.HashPassword(password);
+        //}
 
 
         private int InsertUser(
@@ -234,7 +235,7 @@ namespace BankManagementSystem.Modules.Users.Services
                     PhoneNumber = request.PhoneNumber,
                     Address = request.Address,
 
-                    PasswordHash = HashPassword("123456"),
+                    PasswordHash = PasswordHelper.HashPassword("123456"),
 
                     MustChangePassword = true,
 

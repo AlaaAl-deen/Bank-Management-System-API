@@ -34,5 +34,24 @@ namespace BankManagementSystem.Modules.Authentication.Controllers
 
             return Ok(response);
         }
+
+        [HttpPost("change-password")]
+        public ActionResult<ChangePasswordResponse> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            ChangePasswordResponse response = _authenticationService.ChangePassword(request);
+
+            if (!response.Success)
+            {
+                if (response.Message == "Customer not found." ||
+                    response.Message == "Current password is incorrect.")
+                {
+                    return Unauthorized(response);
+                }
+
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
     }
 }
