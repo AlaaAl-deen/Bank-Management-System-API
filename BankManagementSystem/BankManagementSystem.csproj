@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Modules\Accounts\" />
+    <Folder Include="Modules\Accounts\Requests\" />
     <Folder Include="Modules\Authentication\Models\" />
     <Folder Include="Modules\Beneficiaries\" />
     <Folder Include="Modules\Dashboard\" />
