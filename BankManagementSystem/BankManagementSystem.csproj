@@ -17,7 +17,6 @@
     <Folder Include="Modules\Beneficiaries\" />
     <Folder Include="Modules\Dashboard\" />
     <Folder Include="Modules\Roles\" />
-    <Folder Include="Modules\Transactions\" />
   </ItemGroup>
 
 </Project>
