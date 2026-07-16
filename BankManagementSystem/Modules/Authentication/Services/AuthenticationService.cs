@@ -134,6 +134,28 @@ namespace BankManagementSystem.Modules.Authentication.Services
             }
         }
 
+        //change password
+        private void ValidateChangePasswordRequest(ChangePasswordRequest request)
+        {
+            if (request == null)
+                throw new Exception("Request cannot be null.");
+
+            if (request.CustomerNumber <= 0)
+                throw new Exception("Customer number is required.");
+
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+                throw new Exception("Current password is required.");
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+                throw new Exception("New password is required.");
+
+            if (request.CurrentPassword == request.NewPassword)
+                throw new Exception("New password must be different from current password.");
+
+            if (request.NewPassword.Length < 6)
+                throw new Exception("New password must be at least 6 characters.");
+        }
+
 
 
     }
