@@ -1,4 +1,5 @@
 ﻿using BankManagementSystem.Common;
+using BankManagementSystem.Modules.Accounts.Requests;
 using BankManagementSystem.Modules.Accounts.Responses;
 using System.Data.SqlClient;
 
@@ -86,6 +87,24 @@ namespace BankManagementSystem.Modules.Accounts.Services
             }
 
             return response;
+        }
+
+        private void ValidateAddCurrencyAccountRequest(AddCurrencyAccountRequest request)
+        {
+            if (request == null)
+            {
+                throw new Exception("Request cannot be null.");
+            }
+
+            if (request.CustomerNumber <= 0)
+            {
+                throw new Exception("Customer number is required.");
+            }
+
+            if (request.CurrencyId <= 0)
+            {
+                throw new Exception("Currency is required.");
+            }
         }
 
     }
