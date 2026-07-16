@@ -156,6 +156,37 @@ namespace BankManagementSystem.Modules.Authentication.Services
                 throw new Exception("New password must be at least 6 characters.");
         }
 
+        private void UpdatePassword(int userId, string passwordHash)
+        {
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                const string query = @"
+        UPDATE Users
+        SET
+            PasswordHash = @PasswordHash,
+            MustChangePassword = @MustChangePassword,
+            UpdatedAt = @UpdatedAt
+        WHERE UserId = @UserId";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@PasswordHash", passwordHash);
+                    command.Parameters.AddWithValue("@MustChangePassword", false);
+                    command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+                    command.Parameters.AddWithValue("@UserId", userId);
+
+                    int affectedRows = command.ExecuteNonQuery();
+
+                    if (affectedRows == 0)
+                    {
+                        throw new Exception("Failed to update password.");
+                    }
+                }
+            }
+        }
+
 
 
     }
