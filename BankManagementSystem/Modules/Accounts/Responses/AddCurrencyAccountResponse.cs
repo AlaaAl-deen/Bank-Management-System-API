@@ -1,6 +1,8 @@
-﻿namespace BankManagementSystem.Modules.Accounts.Responses
+﻿using BankManagementSystem.Common.Responses;
+
+namespace BankManagementSystem.Modules.Accounts.Responses
 {
-    public class AddCurrencyAccountResponse
+    public class AddCurrencyAccountResponse : BaseResponse
     {
         public long AccountNumber { get; set; }
 

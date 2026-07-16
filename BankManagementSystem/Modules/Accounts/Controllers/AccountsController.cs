@@ -1,4 +1,5 @@
-﻿using BankManagementSystem.Modules.Accounts.Responses;
+﻿using BankManagementSystem.Modules.Accounts.Requests;
+using BankManagementSystem.Modules.Accounts.Responses;
 using BankManagementSystem.Modules.Accounts.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,5 +29,20 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
 
             return Ok(response);
         }
+
+        [HttpPost("add-currency")]
+        public ActionResult<AddCurrencyAccountResponse> AddCurrency(AddCurrencyAccountRequest request)
+        {
+            AddCurrencyAccountResponse response = _accountService.AddCurrencyAccount(request);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
     }
+
+    
 }
