@@ -28,5 +28,18 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
 
             return Ok(response);
         }
+
+        [HttpPost("transfer")]
+        public ActionResult<TransferResponse> Transfer([FromBody] TransferRequest request)
+        {
+            TransferResponse response = _transactionService.Transfer(request);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
     }
 }

@@ -261,5 +261,154 @@ namespace BankManagementSystem.Modules.Transactions.Services
             return response;
         }
 
+        //Transfer
+        private void ValidateTransferRequest(TransferRequest request)
+        {
+            if (request == null)
+                throw new Exception("Request cannot be null.");
+
+            if (request.FromAccountNumber <= 0)
+                throw new Exception("Sender account number is required.");
+
+            if (request.ToAccountNumber <= 0)
+                throw new Exception("Receiver account number is required.");
+
+            if (request.FromAccountNumber == request.ToAccountNumber)
+                throw new Exception("Sender and receiver accounts cannot be the same.");
+
+            if (request.Amount <= 0)
+                throw new Exception("Amount must be greater than zero.");
+        }
+
+        private bool HasSufficientBalance(Account account, decimal amount)
+        {
+            return account.Balance >= amount;
+        }
+
+
+        public TransferResponse Transfer(TransferRequest request)
+        {
+            TransferResponse response = new TransferResponse();
+
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                SqlTransaction transaction = connection.BeginTransaction();
+
+                try
+                {
+                    // Validate Request
+                    ValidateTransferRequest(request);
+
+                    // Get Sender Account
+                    Account senderAccount = GetAccountByAccountNumber(
+                        connection,
+                        transaction,
+                        request.FromAccountNumber);
+
+                    if (senderAccount == null)
+                    {
+                        throw new Exception("Sender account not found.");
+                    }
+
+                    // Get Receiver Account
+                    Account receiverAccount = GetAccountByAccountNumber(
+                        connection,
+                        transaction,
+                        request.ToAccountNumber);
+
+                    if (receiverAccount == null)
+                    {
+                        throw new Exception("Receiver account not found.");
+                    }
+
+                    // Check Sender Account Status
+                    if (!IsAccountActive(senderAccount.AccountStatusId))
+                    {
+                        throw new Exception("Sender account is inactive.");
+                    }
+
+                    // Check Receiver Account Status
+                    if (!IsAccountActive(receiverAccount.AccountStatusId))
+                    {
+                        throw new Exception("Receiver account is inactive.");
+                    }
+
+                    // Check Currency
+                    if (senderAccount.CurrencyId != receiverAccount.CurrencyId)
+                    {
+                        throw new Exception("Transfer is allowed only between accounts with the same currency. Please use the Exchange service.");
+                    }
+                    // Check Balance
+                    if (!HasSufficientBalance(senderAccount, request.Amount))
+                    {
+                        throw new Exception("Insufficient balance.");
+                    }
+
+                    // Calculate New Balances
+                    decimal senderNewBalance = senderAccount.Balance - request.Amount;
+                    decimal receiverNewBalance = receiverAccount.Balance + request.Amount;
+
+                    // Update Sender Balance
+                    UpdateBalance(
+                        connection,
+                        transaction,
+                        senderAccount.AccountId,
+                        senderNewBalance);
+
+                    // Update Receiver Balance
+                    UpdateBalance(
+                        connection,
+                        transaction,
+                        receiverAccount.AccountId,
+                        receiverNewBalance);
+
+                    // Generate Reference Number
+                    long referenceNumber = GenerateReferenceNumber(
+                        connection,
+                        transaction);
+
+                    // Create Transaction
+                    Transaction transactionModel = new Transaction
+                    {
+                        ReferenceNumber = referenceNumber,
+                        TransactionTypeId = 2,       // Transfer
+                        TransactionStatusId = 2,     // Completed
+                        FromAccountId = senderAccount.AccountId,
+                        ToAccountId = receiverAccount.AccountId,
+                        Amount = request.Amount,
+                        ExchangeRate = 1,
+                        Description = "Account Transfer",
+                        CreatedBy = 1,               // Admin
+                        CreatedAt = DateTime.Now
+                    };
+
+                    CreateTransaction(
+                        connection,
+                        transaction,
+                        transactionModel);
+
+                    // Commit
+                    transaction.Commit();
+
+                    response.Success = true;
+                    response.Message = "Transfer completed successfully.";
+                    response.ReferenceNumber = referenceNumber;
+                    response.SenderNewBalance = senderNewBalance;
+                    response.ReceiverNewBalance = receiverNewBalance;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+
+                    response.Success = false;
+                    response.Message = ex.Message;
+                }
+            }
+
+            return response;
+        }
+
     }
 }
