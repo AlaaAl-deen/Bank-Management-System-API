@@ -599,5 +599,200 @@ namespace BankManagementSystem.Modules.Transactions.Services
             return response;
         }
 
+        //Account statement
+        private void ValidateAccountNumber(long accountNumber)
+        {
+            if (accountNumber <= 0)
+            {
+                throw new Exception("Account number is required.");
+            }
+        }
+
+        private List<StatementTransactionResponse> GetTransactionsByAccount(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int accountId)
+        {
+            List<StatementTransactionResponse> transactions = new List<StatementTransactionResponse>();
+
+            const string query = @"
+    SELECT
+        t.ReferenceNumber,
+        tt.TransactionTypeName,
+        t.FromAccountId,
+        t.ToAccountId,
+        t.Amount,
+        t.ExchangeRate,
+        t.Description,
+        t.CreatedAt
+    FROM Transactions t
+    INNER JOIN TransactionTypes tt
+        ON t.TransactionTypeId = tt.TransactionTypeId
+    WHERE
+        t.FromAccountId = @AccountId
+        OR t.ToAccountId = @AccountId
+    ORDER BY t.CreatedAt DESC;";
+
+            using (SqlCommand command = new SqlCommand(query, connection, transaction))
+            {
+                command.Parameters.AddWithValue("@AccountId", accountId);
+
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        StatementTransactionResponse statement = new StatementTransactionResponse
+                        {
+                            ReferenceNumber = Convert.ToInt64(reader["ReferenceNumber"]),
+                            TransactionType = reader["TransactionTypeName"].ToString(),
+                            Amount = Convert.ToDecimal(reader["Amount"]),
+                            ExchangeRate = Convert.ToDecimal(reader["ExchangeRate"]),
+                            Description = reader["Description"].ToString(),
+                            CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+                        };
+
+                        int? fromAccountId = reader["FromAccountId"] == DBNull.Value
+                            ? (int?)null
+                            : Convert.ToInt32(reader["FromAccountId"]);
+
+                        int? toAccountId = reader["ToAccountId"] == DBNull.Value
+                            ? (int?)null
+                            : Convert.ToInt32(reader["ToAccountId"]);
+
+                        switch (statement.TransactionType)
+                        {
+                            case "Deposit":
+                                statement.TransactionDirection = "Deposit";
+                                break;
+
+                            case "Transfer":
+                                statement.TransactionDirection =
+                                    fromAccountId == accountId
+                                        ? "Transfer Out"
+                                        : "Transfer In";
+                                break;
+
+                            case "Exchange":
+                                statement.TransactionDirection =
+                                    fromAccountId == accountId
+                                        ? "Exchange Out"
+                                        : "Exchange In";
+                                break;
+
+                            default:
+                                statement.TransactionDirection = "Unknown";
+                                break;
+                        }
+
+                        transactions.Add(statement);
+                    }
+                }
+            }
+
+            return transactions;
+        }
+
+        private AccountStatementInfo GetAccountStatementInfo(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    long accountNumber)
+        {
+            const string query = @"
+    SELECT
+        a.AccountId,
+        a.AccountNumber,
+        u.CustomerNumber,
+        CONCAT(
+            u.FirstName, ' ',
+            u.SecondName, ' ',
+            u.ThirdName, ' ',
+            u.LastName
+        ) AS CustomerName,
+        c.CurrencyCode,
+        a.Balance
+    FROM Accounts a
+    INNER JOIN Users u
+        ON a.UserId = u.UserId
+    INNER JOIN Currencies c
+        ON a.CurrencyId = c.CurrencyId
+    WHERE a.AccountNumber = @AccountNumber;";
+
+            using (SqlCommand command = new SqlCommand(query, connection, transaction))
+            {
+                command.Parameters.AddWithValue("@AccountNumber", accountNumber);
+
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new AccountStatementInfo
+                        {
+                            AccountId = Convert.ToInt32(reader["AccountId"]),
+                            AccountNumber = Convert.ToInt64(reader["AccountNumber"]),
+                            CustomerNumber = Convert.ToInt32(reader["CustomerNumber"]),
+                            CustomerName = reader["CustomerName"].ToString(),
+                            Currency = reader["CurrencyCode"].ToString(),
+                            Balance = Convert.ToDecimal(reader["Balance"])
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public AccountStatementResponse GetAccountStatement(long accountNumber)
+        {
+            ValidateAccountNumber(accountNumber);
+
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                SqlTransaction transaction = connection.BeginTransaction();
+
+                try
+                {
+                    AccountStatementInfo accountInfo =
+                        GetAccountStatementInfo(connection, transaction, accountNumber);
+
+                    if (accountInfo == null)
+                    {
+                        throw new Exception("Account not found.");
+                    }
+
+                    List<StatementTransactionResponse> transactions =
+                        GetTransactionsByAccount(
+                            connection,
+                            transaction,
+                            accountInfo.AccountId);
+
+                    AccountStatementResponse response = new AccountStatementResponse
+                    {
+                        Success = true,
+                        Message = "Account statement retrieved successfully.",
+
+                        AccountNumber = accountInfo.AccountNumber,
+                        CustomerNumber = accountInfo.CustomerNumber,
+                        CustomerName = accountInfo.CustomerName,
+                        Currency = accountInfo.Currency,
+                        CurrentBalance = accountInfo.Balance,
+
+                        Transactions = transactions
+                    };
+
+                    transaction.Commit();
+
+                    return response;
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+        }
+
+
     }
 }

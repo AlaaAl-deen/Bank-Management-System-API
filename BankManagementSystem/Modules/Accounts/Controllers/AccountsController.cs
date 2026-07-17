@@ -42,6 +42,8 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
 
             return Ok(response);
         }
+
+
     }
 
     

@@ -54,5 +54,24 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
 
             return Ok(response);
         }
+
+        [HttpGet("{accountNumber}/statement")]
+        public IActionResult GetAccountStatement(long accountNumber)
+        {
+            try
+            {
+                AccountStatementResponse response = _transactionService.GetAccountStatement(accountNumber);
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new AccountStatementResponse
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+        }
     }
 }
