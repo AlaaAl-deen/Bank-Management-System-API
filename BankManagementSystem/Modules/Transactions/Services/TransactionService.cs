@@ -410,5 +410,194 @@ namespace BankManagementSystem.Modules.Transactions.Services
             return response;
         }
 
+        //exchange 
+        private void ValidateExchangeRequest(ExchangeRequest request)
+        {
+            if (request == null)
+                throw new Exception("Request cannot be null.");
+
+            if (request.FromAccountNumber <= 0)
+                throw new Exception("Source account number is required.");
+
+            if (request.ToAccountNumber <= 0)
+                throw new Exception("Destination account number is required.");
+
+            if (request.FromAccountNumber == request.ToAccountNumber)
+                throw new Exception("Source and destination accounts cannot be the same.");
+
+            if (request.Amount <= 0)
+                throw new Exception("Amount must be greater than zero.");
+        }
+
+        private decimal GetExchangeRate(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int fromCurrencyId,
+    int toCurrencyId)
+        {
+            const string query = @"
+    SELECT ExchangeRate
+    FROM ExchangeRates
+    WHERE FromCurrencyId = @FromCurrencyId
+      AND ToCurrencyId = @ToCurrencyId";
+
+            using (SqlCommand command = new SqlCommand(query, connection, transaction))
+            {
+                command.Parameters.AddWithValue("@FromCurrencyId", fromCurrencyId);
+                command.Parameters.AddWithValue("@ToCurrencyId", toCurrencyId);
+
+                object result = command.ExecuteScalar();
+
+                if (result == null || result == DBNull.Value)
+                {
+                    throw new Exception("Exchange rate not found.");
+                }
+
+                return Convert.ToDecimal(result);
+            }
+        }
+
+        public ExchangeResponse Exchange(ExchangeRequest request)
+        {
+            ExchangeResponse response = new ExchangeResponse();
+
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                SqlTransaction transaction = connection.BeginTransaction();
+
+                try
+                {
+                    // Validate Request
+                    ValidateExchangeRequest(request);
+
+                    // Get Source Account
+                    Account sourceAccount = GetAccountByAccountNumber(
+                        connection,
+                        transaction,
+                        request.FromAccountNumber);
+
+                    if (sourceAccount == null)
+                    {
+                        throw new Exception("Source account not found.");
+                    }
+
+                    // Get Destination Account
+                    Account destinationAccount = GetAccountByAccountNumber(
+                        connection,
+                        transaction,
+                        request.ToAccountNumber);
+
+                    if (destinationAccount == null)
+                    {
+                        throw new Exception("Destination account not found.");
+                    }
+
+                    // Both accounts must belong to the same customer
+                    if (sourceAccount.UserId != destinationAccount.UserId)
+                    {
+                        throw new Exception("Exchange is allowed only between accounts belonging to the same customer.");
+                    }
+
+                    // Accounts must have different currencies
+                    if (sourceAccount.CurrencyId == destinationAccount.CurrencyId)
+                    {
+                        throw new Exception("Source and destination accounts must have different currencies.");
+                    }
+
+                    // Check Account Status
+                    if (!IsAccountActive(sourceAccount.AccountStatusId))
+                    {
+                        throw new Exception("Source account is inactive.");
+                    }
+
+                    if (!IsAccountActive(destinationAccount.AccountStatusId))
+                    {
+                        throw new Exception("Destination account is inactive.");
+                    }
+
+                    // Check Balance
+                    if (!HasSufficientBalance(sourceAccount, request.Amount))
+                    {
+                        throw new Exception("Insufficient balance.");
+                    }
+
+                    // Get Exchange Rate
+                    decimal exchangeRate = GetExchangeRate(
+                        connection,
+                        transaction,
+                        sourceAccount.CurrencyId,
+                        destinationAccount.CurrencyId);
+
+                    // Calculate Converted Amount
+                    decimal convertedAmount = request.Amount * exchangeRate;
+
+                    // Calculate New Balances
+                    decimal sourceNewBalance = sourceAccount.Balance - request.Amount;
+                    decimal destinationNewBalance = destinationAccount.Balance + convertedAmount;
+
+                    // Update Source Balance
+                    UpdateBalance(
+                        connection,
+                        transaction,
+                        sourceAccount.AccountId,
+                        sourceNewBalance);
+
+                    // Update Destination Balance
+                    UpdateBalance(
+                        connection,
+                        transaction,
+                        destinationAccount.AccountId,
+                        destinationNewBalance);
+
+                    // Generate Reference Number
+                    long referenceNumber = GenerateReferenceNumber(
+                        connection,
+                        transaction);
+
+                    // Create Transaction
+                    Transaction transactionModel = new Transaction
+                    {
+                        ReferenceNumber = referenceNumber,
+                        TransactionTypeId = 3,       // Exchange
+                        TransactionStatusId = 2,     // Completed
+                        FromAccountId = sourceAccount.AccountId,
+                        ToAccountId = destinationAccount.AccountId,
+                        Amount = request.Amount,
+                        ExchangeRate = exchangeRate,
+                        Description = "Currency Exchange",
+                        CreatedBy = 1,               // Admin
+                        CreatedAt = DateTime.Now
+                    };
+
+                    CreateTransaction(
+                        connection,
+                        transaction,
+                        transactionModel);
+
+                    // Commit
+                    transaction.Commit();
+
+                    response.Success = true;
+                    response.Message = "Exchange completed successfully.";
+                    response.ReferenceNumber = referenceNumber;
+                    response.ExchangeRate = exchangeRate;
+                    response.ConvertedAmount = convertedAmount;
+                    response.SenderNewBalance = sourceNewBalance;
+                    response.ReceiverNewBalance = destinationNewBalance;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+
+                    response.Success = false;
+                    response.Message = ex.Message;
+                }
+            }
+
+            return response;
+        }
+
     }
 }

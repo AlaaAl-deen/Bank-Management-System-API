@@ -41,5 +41,18 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
 
             return Ok(response);
         }
+
+        [HttpPost("exchange")]
+        public ActionResult<ExchangeResponse> Exchange([FromBody] ExchangeRequest request)
+        {
+            ExchangeResponse response = _transactionService.Exchange(request);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
     }
 }
