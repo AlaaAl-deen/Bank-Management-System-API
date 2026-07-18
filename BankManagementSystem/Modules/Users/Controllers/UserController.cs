@@ -52,5 +52,29 @@ namespace BankManagementSystem.Modules.Users.Controllers
 
             return BadRequest(response);
         }
+
+        [HttpPatch("{customerNumber}/deactivate")]
+        public IActionResult DeactivateUser(int customerNumber)
+        {
+            DeactivateUserResponse response =
+                _userService.DeactivateUser(customerNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
+
+        [HttpPatch("{customerNumber}/activate")]
+        public IActionResult ActivateUser(int customerNumber)
+        {
+            ActivateUserResponse response =
+                _userService.ActivateUser(customerNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
     }
 }

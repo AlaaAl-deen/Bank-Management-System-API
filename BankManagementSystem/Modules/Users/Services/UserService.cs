@@ -612,6 +612,196 @@ namespace BankManagementSystem.Modules.Users.Services
             }
         }
 
+        //deactivate user
+
+        private void DeactivateUser(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int userId)
+        {
+            string query = @"
+        UPDATE Users
+        SET
+            IsActive = @IsActive,
+            UpdatedAt = @UpdatedAt
+        WHERE UserId = @UserId";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@IsActive", false);
+            command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+            command.Parameters.AddWithValue("@UserId", userId);
+
+            command.ExecuteNonQuery();
+        }
+
+        private bool IsUserActive(bool isActive)
+        {
+            return isActive;
+        }
+
+        private bool IsUserInactive(bool isActive)
+        {
+            return !isActive;
+        }
+
+        public DeactivateUserResponse DeactivateUser(int customerNumber)
+        {
+            DeactivateUserResponse response = new();
+
+            if (!ValidateCustomerNumber(customerNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid customer number.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction =
+                connection.BeginTransaction();
+
+            try
+            {
+                User user =
+                    GetUserEntityByCustomerNumber(
+                        connection,
+                        transaction,
+                        customerNumber);
+
+                if (user == null)
+                {
+                    response.Success = false;
+                    response.Message = "User not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsUserInactive(user.IsActive))
+                {
+                    response.Success = false;
+                    response.Message = "User is already deactivated.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                DeactivateUser(
+                    connection,
+                    transaction,
+                    user.UserId);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "User deactivated successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+
+        private void ActivateUser(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int userId)
+        {
+            string query = @"
+        UPDATE Users
+        SET
+            IsActive = @IsActive,
+            UpdatedAt = @UpdatedAt
+        WHERE UserId = @UserId";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@IsActive", true);
+            command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+            command.Parameters.AddWithValue("@UserId", userId);
+
+            command.ExecuteNonQuery();
+        }
+
+        public ActivateUserResponse ActivateUser(int customerNumber)
+        {
+            ActivateUserResponse response = new();
+
+            if (!ValidateCustomerNumber(customerNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid customer number.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction =
+                connection.BeginTransaction();
+
+            try
+            {
+                User user =
+                    GetUserEntityByCustomerNumber(
+                        connection,
+                        transaction,
+                        customerNumber);
+
+                if (user == null)
+                {
+                    response.Success = false;
+                    response.Message = "User not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsUserActive(user.IsActive))
+                {
+                    response.Success = false;
+                    response.Message = "User is already active.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                ActivateUser(
+                    connection,
+                    transaction,
+                    user.UserId);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "User activated successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+
 
     }
 }
