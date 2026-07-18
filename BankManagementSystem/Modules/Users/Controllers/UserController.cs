@@ -28,5 +28,29 @@ namespace BankManagementSystem.Modules.Users.Controllers
 
             return Ok(response);
         }
+
+        [HttpGet("{customerNumber}")]
+        public IActionResult GetUserDetails(int customerNumber)
+        {
+            GetUserDetailsResponse response =
+                _userService.GetUserDetails(customerNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
+
+        [HttpPut("{customerNumber}")]
+        public IActionResult UpdateUser(int customerNumber, UpdateUserRequest request)
+        {
+            UpdateUserResponse response =
+                _userService.UpdateUser(customerNumber, request);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
     }
 }

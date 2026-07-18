@@ -290,5 +290,328 @@ namespace BankManagementSystem.Modules.Users.Services
         }
 
 
+        private GetUserDetailsResponse GetUserDetailsByCustomerNumber(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int customerNumber)
+        {
+            string query = @"
+        SELECT
+            CustomerNumber,
+            FirstName,
+            SecondName,
+            ThirdName,
+            LastName,
+            PhoneNumber,
+            Address,
+            RoleName,
+            IsActive,
+            CreatedAt
+        FROM Users U
+        INNER JOIN Roles R
+            ON U.RoleId = R.RoleId
+        WHERE CustomerNumber = @CustomerNumber";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue(
+                "@CustomerNumber",
+                customerNumber);
+
+            using SqlDataReader reader =
+                command.ExecuteReader();
+
+            if (!reader.Read())
+            {
+                reader.Close();
+                return null;
+            }
+
+            GetUserDetailsResponse response = new();
+
+            response.CustomerNumber = reader.GetInt32(0);
+
+            response.FirstName = reader.GetString(1);
+
+            response.SecondName = reader.GetString(2);
+
+            response.ThirdName = reader.GetString(3);
+
+            response.LastName = reader.GetString(4);
+
+            response.FullName =
+                $"{response.FirstName} " +
+                $"{response.SecondName} " +
+                $"{response.ThirdName} " +
+                $"{response.LastName}".Trim();
+
+            response.PhoneNumber = reader.GetString(5);
+
+            response.Address = reader.GetString(6);
+
+            response.Role = reader.GetString(7);
+
+            response.IsActive = reader.GetBoolean(8);
+
+            response.CreatedAt = reader.GetDateTime(9);
+
+            reader.Close();
+
+            return response;
+        }
+
+        private bool ValidateCustomerNumber(int customerNumber)
+        {
+            return customerNumber > 0;
+        }
+
+        public GetUserDetailsResponse GetUserDetails(int customerNumber)
+        {
+            GetUserDetailsResponse response = new();
+
+            if (!ValidateCustomerNumber(customerNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid customer number.";
+
+                return response;
+            }
+
+            using SqlConnection connection =
+                GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction =
+                connection.BeginTransaction();
+
+            try
+            {
+                GetUserDetailsResponse user =
+                    GetUserDetailsByCustomerNumber(
+                        connection,
+                        transaction,
+                        customerNumber);
+
+                if (user == null)
+                {
+                    response.Success = false;
+                    response.Message = "User not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                transaction.Commit();
+
+                user.Success = true;
+                user.Message = "User details retrieved successfully.";
+
+                return user;
+            }
+            catch
+            {
+                transaction.Rollback();
+
+                throw;
+            }
+        }
+
+        //Update
+
+        private bool ValidateUpdateUserRequest(UpdateUserRequest request)
+        {
+            if (request == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(request.FirstName))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(request.SecondName))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(request.LastName))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(request.Address))
+                return false;
+
+            return true;
+        }
+
+        private void UpdateUser(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int userId,
+    UpdateUserRequest request)
+        {
+            string query = @"
+        UPDATE Users
+        SET
+            FirstName=@FirstName,
+            SecondName=@SecondName,
+            ThirdName=@ThirdName,
+            LastName=@LastName,
+            PhoneNumber=@PhoneNumber,
+            Address=@Address,
+            UpdatedAt=@UpdatedAt
+        WHERE UserId=@UserId";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@FirstName", request.FirstName);
+
+            command.Parameters.AddWithValue("@SecondName", request.SecondName);
+
+            command.Parameters.AddWithValue("@ThirdName", request.ThirdName);
+
+            command.Parameters.AddWithValue("@LastName", request.LastName);
+
+            command.Parameters.AddWithValue("@PhoneNumber", request.PhoneNumber);
+
+            command.Parameters.AddWithValue("@Address", request.Address);
+
+            command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+
+            command.Parameters.AddWithValue("@UserId", userId);
+
+            command.ExecuteNonQuery();
+        }
+
+        private User GetUserEntityByCustomerNumber(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int customerNumber)
+        {
+            string query = @"
+        SELECT
+            UserId,
+            CustomerNumber,
+            FirstName,
+            SecondName,
+            ThirdName,
+            LastName,
+            PhoneNumber,
+            Address,
+            PasswordHash,
+            RoleId,
+            IsActive,
+            CreatedAt,
+            UpdatedAt
+        FROM Users
+        WHERE CustomerNumber = @CustomerNumber";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue(
+                "@CustomerNumber",
+                customerNumber);
+
+            using SqlDataReader reader =
+                command.ExecuteReader();
+
+            if (!reader.Read())
+            {
+                reader.Close();
+                return null;
+            }
+
+            User user = new();
+
+            user.UserId = reader.GetInt32(0);
+            user.CustomerNumber = reader.GetInt32(1);
+            user.FirstName = reader.GetString(2);
+            user.SecondName = reader.GetString(3);
+            user.ThirdName = reader.GetString(4);
+            user.LastName = reader.GetString(5);
+            user.PhoneNumber = reader.GetString(6);
+            user.Address = reader.GetString(7);
+            user.PasswordHash = reader.GetString(8);
+            user.RoleId = reader.GetInt32(9);
+            user.IsActive = reader.GetBoolean(10);
+            user.CreatedAt = reader.GetDateTime(11);
+
+            if (!reader.IsDBNull(12))
+                user.UpdatedAt = reader.GetDateTime(12);
+
+            reader.Close();
+
+            return user;
+        }
+        public UpdateUserResponse UpdateUser(
+    int customerNumber,
+    UpdateUserRequest request)
+        {
+            UpdateUserResponse response = new();
+
+            if (!ValidateCustomerNumber(customerNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid customer number.";
+
+                return response;
+            }
+
+            if (!ValidateUpdateUserRequest(request))
+            {
+                response.Success = false;
+                response.Message = "Invalid user data.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction =
+                connection.BeginTransaction();
+
+            try
+            {
+                User user =
+                    GetUserEntityByCustomerNumber(
+                        connection,
+                        transaction,
+                        customerNumber);
+
+                if (user == null)
+                {
+                    response.Success = false;
+                    response.Message = "User not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                UpdateUser(
+                    connection,
+                    transaction,
+                    user.UserId,
+                    request);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "User updated successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+
     }
 }
