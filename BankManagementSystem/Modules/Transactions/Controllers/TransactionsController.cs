@@ -11,6 +11,10 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
     public class TransactionsController : ControllerBase
     {
         private readonly TransactionService _transactionService;
+        private int GetCurrentCustomerNumber()
+        {
+            return int.Parse(User.FindFirst("CustomerNumber")!.Value);
+        }
 
         public TransactionsController(TransactionService transactionService)
         {
@@ -29,20 +33,20 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
 
             return Ok(response);
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpPost("transfer")]
-        public ActionResult<TransferResponse> Transfer([FromBody] TransferRequest request)
+        public ActionResult<TransferResponse> Transfer(
+     [FromBody] TransferRequest request)
         {
-            TransferResponse response = _transactionService.Transfer(request);
+            TransferResponse response =
+                _transactionService.Transfer(request);
 
             if (!response.Success)
-            {
                 return BadRequest(response);
-            }
 
             return Ok(response);
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpPost("exchange")]
         public ActionResult<ExchangeResponse> Exchange([FromBody] ExchangeRequest request)
         {
@@ -55,7 +59,7 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
 
             return Ok(response);
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpGet("{accountNumber}/statement")]
         public IActionResult GetAccountStatement(long accountNumber)
         {
@@ -73,6 +77,69 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
                     Message = ex.Message
                 });
             }
+        }
+
+        [Authorize(Roles = "Customer")]
+        [HttpGet("my-accounts/{accountNumber}/statement")]
+        public IActionResult GetMyAccountStatement(long accountNumber)
+        {
+            try
+            {
+                int customerNumber = GetCurrentCustomerNumber();
+
+                AccountStatementResponse response =
+                    _transactionService.GetMyAccountStatement(
+                        customerNumber,
+                        accountNumber);
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new AccountStatementResponse
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [Authorize(Roles = "Customer")]
+        [HttpPost("my-accounts/transfer")]
+        public ActionResult<TransferResponse> TransferForMe(
+    [FromBody] TransferRequest request)
+        {
+            int customerNumber = GetCurrentCustomerNumber();
+
+            TransferResponse response =
+                _transactionService.Transfer(
+                    request,
+                    customerNumber);
+
+            if (!response.Success)
+                return BadRequest(response);
+
+            return Ok(response);
+        }
+
+        [Authorize(Roles = "Customer")]
+        [HttpPost("my-accounts/exchange")]
+        public ActionResult<ExchangeResponse> ExchangeForMe(
+    [FromBody] ExchangeRequest request)
+        {
+            int customerNumber = GetCurrentCustomerNumber();
+
+            ExchangeResponse response =
+                _transactionService.Exchange(
+                    request,
+                    customerNumber);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
         }
     }
 }

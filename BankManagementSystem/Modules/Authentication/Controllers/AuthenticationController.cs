@@ -37,7 +37,7 @@ namespace BankManagementSystem.Modules.Authentication.Controllers
             return Ok(response);
         }
 
-        [Authorize(Roles = "Admin,Customer")]
+        [Authorize(Roles = "Admin")]
         [HttpPost("change-password")]
         public ActionResult<ChangePasswordResponse> ChangePassword([FromBody] ChangePasswordRequest request)
         {
@@ -55,6 +55,16 @@ namespace BankManagementSystem.Modules.Authentication.Controllers
             }
 
             return Ok(response);
+        }
+        [Authorize]
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            return Ok(new
+            {
+                Success = true,
+                Message = "Logout successful. Please remove the token from the client."
+            });
         }
     }
 }

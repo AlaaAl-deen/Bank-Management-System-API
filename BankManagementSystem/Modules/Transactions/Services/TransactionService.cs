@@ -61,7 +61,7 @@ namespace BankManagementSystem.Modules.Transactions.Services
                             Balance = Convert.ToDecimal(reader["Balance"]),
                             AccountStatusId = Convert.ToInt32(reader["AccountStatusId"]),
                             CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
-                            UpdatedAt = reader["UpdatedAt"] == DBNull.Value ? null: Convert.ToDateTime(reader["UpdatedAt"])
+                            UpdatedAt = reader["UpdatedAt"] == DBNull.Value ? null : Convert.ToDateTime(reader["UpdatedAt"])
                         };
                     }
                 }
@@ -286,7 +286,9 @@ namespace BankManagementSystem.Modules.Transactions.Services
         }
 
 
-        public TransferResponse Transfer(TransferRequest request)
+        public TransferResponse Transfer(
+     TransferRequest request,
+     int? customerNumber = null)
         {
             TransferResponse response = new TransferResponse();
 
@@ -300,6 +302,22 @@ namespace BankManagementSystem.Modules.Transactions.Services
                 {
                     // Validate Request
                     ValidateTransferRequest(request);
+
+                    // التحقق من ملكية الحساب إذا كان الطلب من العميل
+                    if (customerNumber.HasValue)
+                    {
+                        bool isOwner = IsAccountOwnedByCustomer(
+                            connection,
+                            transaction,
+                            request.FromAccountNumber,
+                            customerNumber.Value);
+
+                        if (!isOwner)
+                        {
+                            throw new Exception(
+                                "You are not authorized to use this account.");
+                        }
+                    }
 
                     // Get Sender Account
                     Account senderAccount = GetAccountByAccountNumber(
@@ -338,8 +356,10 @@ namespace BankManagementSystem.Modules.Transactions.Services
                     // Check Currency
                     if (senderAccount.CurrencyId != receiverAccount.CurrencyId)
                     {
-                        throw new Exception("Transfer is allowed only between accounts with the same currency. Please use the Exchange service.");
+                        throw new Exception(
+                            "Transfer is allowed only between accounts with the same currency. Please use the Exchange service.");
                     }
+
                     // Check Balance
                     if (!HasSufficientBalance(senderAccount, request.Amount))
                     {
@@ -347,8 +367,11 @@ namespace BankManagementSystem.Modules.Transactions.Services
                     }
 
                     // Calculate New Balances
-                    decimal senderNewBalance = senderAccount.Balance - request.Amount;
-                    decimal receiverNewBalance = receiverAccount.Balance + request.Amount;
+                    decimal senderNewBalance =
+                        senderAccount.Balance - request.Amount;
+
+                    decimal receiverNewBalance =
+                        receiverAccount.Balance + request.Amount;
 
                     // Update Sender Balance
                     UpdateBalance(
@@ -365,22 +388,23 @@ namespace BankManagementSystem.Modules.Transactions.Services
                         receiverNewBalance);
 
                     // Generate Reference Number
-                    long referenceNumber = GenerateReferenceNumber(
-                        connection,
-                        transaction);
+                    long referenceNumber =
+                        GenerateReferenceNumber(
+                            connection,
+                            transaction);
 
                     // Create Transaction
                     Transaction transactionModel = new Transaction
                     {
                         ReferenceNumber = referenceNumber,
-                        TransactionTypeId = 2,       // Transfer
-                        TransactionStatusId = 2,     // Completed
+                        TransactionTypeId = 2,
+                        TransactionStatusId = 2,
                         FromAccountId = senderAccount.AccountId,
                         ToAccountId = receiverAccount.AccountId,
                         Amount = request.Amount,
                         ExchangeRate = 1,
                         Description = "Account Transfer",
-                        CreatedBy = 1,               // Admin
+                        CreatedBy = 1,
                         CreatedAt = DateTime.Now
                     };
 
@@ -389,7 +413,6 @@ namespace BankManagementSystem.Modules.Transactions.Services
                         transaction,
                         transactionModel);
 
-                    // Commit
                     transaction.Commit();
 
                     response.Success = true;
@@ -457,7 +480,9 @@ namespace BankManagementSystem.Modules.Transactions.Services
             }
         }
 
-        public ExchangeResponse Exchange(ExchangeRequest request)
+        public ExchangeResponse Exchange(
+    ExchangeRequest request,
+    int? customerNumber = null)
         {
             ExchangeResponse response = new ExchangeResponse();
 
@@ -471,6 +496,22 @@ namespace BankManagementSystem.Modules.Transactions.Services
                 {
                     // Validate Request
                     ValidateExchangeRequest(request);
+
+                    // التحقق من ملكية الحساب إذا كان الطلب من العميل
+                    if (customerNumber.HasValue)
+                    {
+                        bool isOwner = IsAccountOwnedByCustomer(
+                            connection,
+                            transaction,
+                            request.FromAccountNumber,
+                            customerNumber.Value);
+
+                        if (!isOwner)
+                        {
+                            throw new Exception(
+                                "You are not authorized to use this account.");
+                        }
+                    }
 
                     // Get Source Account
                     Account sourceAccount = GetAccountByAccountNumber(
@@ -497,13 +538,15 @@ namespace BankManagementSystem.Modules.Transactions.Services
                     // Both accounts must belong to the same customer
                     if (sourceAccount.UserId != destinationAccount.UserId)
                     {
-                        throw new Exception("Exchange is allowed only between accounts belonging to the same customer.");
+                        throw new Exception(
+                            "Exchange is allowed only between accounts belonging to the same customer.");
                     }
 
                     // Accounts must have different currencies
                     if (sourceAccount.CurrencyId == destinationAccount.CurrencyId)
                     {
-                        throw new Exception("Source and destination accounts must have different currencies.");
+                        throw new Exception(
+                            "Source and destination accounts must have different currencies.");
                     }
 
                     // Check Account Status
@@ -531,11 +574,15 @@ namespace BankManagementSystem.Modules.Transactions.Services
                         destinationAccount.CurrencyId);
 
                     // Calculate Converted Amount
-                    decimal convertedAmount = request.Amount * exchangeRate;
+                    decimal convertedAmount =
+                        request.Amount * exchangeRate;
 
                     // Calculate New Balances
-                    decimal sourceNewBalance = sourceAccount.Balance - request.Amount;
-                    decimal destinationNewBalance = destinationAccount.Balance + convertedAmount;
+                    decimal sourceNewBalance =
+                        sourceAccount.Balance - request.Amount;
+
+                    decimal destinationNewBalance =
+                        destinationAccount.Balance + convertedAmount;
 
                     // Update Source Balance
                     UpdateBalance(
@@ -552,22 +599,23 @@ namespace BankManagementSystem.Modules.Transactions.Services
                         destinationNewBalance);
 
                     // Generate Reference Number
-                    long referenceNumber = GenerateReferenceNumber(
-                        connection,
-                        transaction);
+                    long referenceNumber =
+                        GenerateReferenceNumber(
+                            connection,
+                            transaction);
 
                     // Create Transaction
                     Transaction transactionModel = new Transaction
                     {
                         ReferenceNumber = referenceNumber,
-                        TransactionTypeId = 3,       // Exchange
-                        TransactionStatusId = 2,     // Completed
+                        TransactionTypeId = 3,
+                        TransactionStatusId = 2,
                         FromAccountId = sourceAccount.AccountId,
                         ToAccountId = destinationAccount.AccountId,
                         Amount = request.Amount,
                         ExchangeRate = exchangeRate,
                         Description = "Currency Exchange",
-                        CreatedBy = 1,               // Admin
+                        CreatedBy = 1,
                         CreatedAt = DateTime.Now
                     };
 
@@ -576,7 +624,6 @@ namespace BankManagementSystem.Modules.Transactions.Services
                         transaction,
                         transactionModel);
 
-                    // Commit
                     transaction.Commit();
 
                     response.Success = true;
@@ -793,6 +840,96 @@ namespace BankManagementSystem.Modules.Transactions.Services
             }
         }
 
+        //Customer 
+        public AccountStatementResponse GetMyAccountStatement(
+    int customerNumber,
+    long accountNumber)
+        {
+            ValidateAccountNumber(accountNumber);
+
+            using (SqlConnection connection = GetConnection())
+            {
+                connection.Open();
+
+                SqlTransaction transaction = connection.BeginTransaction();
+
+                try
+                {
+                    AccountStatementInfo accountInfo =
+                        GetAccountStatementInfo(
+                            connection,
+                            transaction,
+                            accountNumber);
+
+                    if (accountInfo == null)
+                    {
+                        throw new Exception("Account not found.");
+                    }
+
+                    // التأكد أن الحساب يخص العميل المسجل دخوله
+                    if (accountInfo.CustomerNumber != customerNumber)
+                    {
+                        throw new Exception("You are not authorized to access this account.");
+                    }
+
+                    List<StatementTransactionResponse> transactions =
+                        GetTransactionsByAccount(
+                            connection,
+                            transaction,
+                            accountInfo.AccountId);
+
+                    AccountStatementResponse response =
+                        new AccountStatementResponse
+                        {
+                            Success = true,
+                            Message = "Account statement retrieved successfully.",
+
+                            AccountNumber = accountInfo.AccountNumber,
+                            CustomerNumber = accountInfo.CustomerNumber,
+                            CustomerName = accountInfo.CustomerName,
+                            Currency = accountInfo.Currency,
+                            CurrentBalance = accountInfo.Balance,
+
+                            Transactions = transactions
+                        };
+
+                    transaction.Commit();
+
+                    return response;
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+        }
+
+        //trnsfer for customer
+        private bool IsAccountOwnedByCustomer(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    long accountNumber,
+    int customerNumber)
+        {
+            const string query = @"
+        SELECT COUNT(*)
+        FROM Accounts A
+        INNER JOIN Users U
+            ON A.UserId = U.UserId
+        WHERE
+            A.AccountNumber = @AccountNumber
+        AND
+            U.CustomerNumber = @CustomerNumber";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@AccountNumber", accountNumber);
+            command.Parameters.AddWithValue("@CustomerNumber", customerNumber);
+
+            return Convert.ToInt32(command.ExecuteScalar()) > 0;
+        }
 
     }
 }
