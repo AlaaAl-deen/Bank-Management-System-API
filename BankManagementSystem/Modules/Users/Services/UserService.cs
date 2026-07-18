@@ -801,7 +801,86 @@ namespace BankManagementSystem.Modules.Users.Services
             }
         }
 
+        private List<CustomerResponse> GetCustomerList(
+    SqlConnection connection,
+    SqlTransaction transaction)
+        {
+            string query = @"
+        SELECT
+            CustomerNumber,
+            CONCAT(
+                FirstName,' ',
+                SecondName,' ',
+                ThirdName,' ',
+                LastName
+            ) AS FullName,
+            PhoneNumber,
+            Address,
+            IsActive,
+            CreatedAt
+        FROM Users
+        WHERE RoleId = 2
+        ORDER BY CustomerNumber";
 
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            using SqlDataReader reader =
+                command.ExecuteReader();
+
+            List<CustomerResponse> customers = new();
+
+            while (reader.Read())
+            {
+                CustomerResponse customer = new();
+
+                customer.CustomerNumber = reader.GetInt32(0);
+                customer.FullName = reader.GetString(1).Trim();
+                customer.PhoneNumber = reader.GetString(2);
+                customer.Address = reader.GetString(3);
+                customer.IsActive = reader.GetBoolean(4);
+                customer.CreatedAt = reader.GetDateTime(5);
+
+                customers.Add(customer);
+            }
+
+            reader.Close();
+
+            return customers;
+        }
+
+        public GetAllCustomersResponse GetAllCustomers()
+        {
+            GetAllCustomersResponse response = new();
+
+            using SqlConnection connection =
+                GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction =
+                connection.BeginTransaction();
+
+            try
+            {
+                response.Customers =
+                    GetCustomerList(
+                        connection,
+                        transaction);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "Customers retrieved successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
 
     }
 }

@@ -76,5 +76,17 @@ namespace BankManagementSystem.Modules.Users.Controllers
 
             return BadRequest(response);
         }
+
+        [HttpGet("customers")]
+        public IActionResult GetAllCustomers()
+        {
+            GetAllCustomersResponse response =
+                _userService.GetAllCustomers();
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
     }
 }
