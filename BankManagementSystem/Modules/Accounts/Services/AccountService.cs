@@ -646,5 +646,102 @@ namespace BankManagementSystem.Modules.Accounts.Services
             }
         }
 
+        private void CloseAccount(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int accountId)
+        {
+            string query = @"
+        UPDATE Accounts
+        SET
+            AccountStatusId = @AccountStatusId,
+            UpdatedAt = @UpdatedAt
+        WHERE AccountId = @AccountId";
+
+            using SqlCommand command = new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@AccountStatusId", 4);
+
+            command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+
+            command.Parameters.AddWithValue("@AccountId", accountId);
+
+            command.ExecuteNonQuery();
+        }
+
+        public CloseAccountResponse CloseAccount(long accountNumber)
+        {
+            CloseAccountResponse response = new();
+
+            if (!ValidateAccountNumber(accountNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid account number.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction = connection.BeginTransaction();
+
+            try
+            {
+                Account account = GetAccountByAccountNumber(
+                    connection,
+                    transaction,
+                    accountNumber);
+
+                if (account == null)
+                {
+                    response.Success = false;
+                    response.Message = "Account not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsAccountClosed(account.AccountStatusId))
+                {
+                    response.Success = false;
+                    response.Message = "Account is already closed.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (account.Balance != 0)
+                {
+                    response.Success = false;
+                    response.Message = "Account cannot be closed because the balance is not zero.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                CloseAccount(
+                    connection,
+                    transaction,
+                    account.AccountId);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "Account closed successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
     }
 }

@@ -67,6 +67,18 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
         }
 
 
+        [HttpPatch("{accountNumber}/close")]
+        public IActionResult CloseAccount(long accountNumber)
+        {
+            CloseAccountResponse response = _accountService.CloseAccount(accountNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
+
+
     }
 
     
