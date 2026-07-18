@@ -743,5 +743,113 @@ namespace BankManagementSystem.Modules.Accounts.Services
             }
         }
 
+
+        private GetAccountDetailsResponse GetAccountDetailsByAccountNumber(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    long accountNumber)
+        {
+            string query = @"
+        SELECT
+            A.AccountNumber,
+            U.CustomerNumber,
+            CONCAT(
+                U.FirstName,' ',
+                U.SecondName,' ',
+                U.ThirdName,' ',
+                U.LastName
+            ) AS CustomerName,
+            C.CurrencyCode,
+            A.Balance,
+            S.StatusName,
+            A.CreatedAt
+        FROM Accounts A
+        INNER JOIN Users U
+            ON A.UserId = U.UserId
+        INNER JOIN Currencies C
+            ON A.CurrencyId = C.CurrencyId
+        INNER JOIN AccountStatuses S
+            ON A.AccountStatusId = S.AccountStatusId
+        WHERE A.AccountNumber = @AccountNumber";
+
+            using SqlCommand command =
+                new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@AccountNumber", accountNumber);
+
+            using SqlDataReader reader = command.ExecuteReader();
+
+            if (!reader.Read())
+            {
+                reader.Close();
+                return null;
+            }
+
+            GetAccountDetailsResponse response = new();
+
+            response.AccountNumber = reader.GetInt64(0);
+            response.CustomerNumber = reader.GetInt32(1);
+            response.CustomerName = reader.GetString(2).Trim();
+            response.Currency = reader.GetString(3);
+            response.Balance = reader.GetDecimal(4);
+            response.Status = reader.GetString(5);
+            response.CreatedAt = reader.GetDateTime(6);
+
+            reader.Close();
+
+            return response;
+        }
+
+        public GetAccountDetailsResponse GetAccountDetails(long accountNumber)
+        {
+            GetAccountDetailsResponse response = new();
+
+            if (!ValidateAccountNumber(accountNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid account number.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction =
+                connection.BeginTransaction();
+
+            try
+            {
+                GetAccountDetailsResponse account =
+                   GetAccountDetailsByAccountNumber(
+                        connection,
+                        transaction,
+                        accountNumber);
+
+                if (account == null)
+                {
+                    response.Success = false;
+                    response.Message = "Account not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                transaction.Commit();
+
+                account.Success = true;
+                account.Message = "Account details retrieved successfully.";
+
+                return account;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
     }
 }

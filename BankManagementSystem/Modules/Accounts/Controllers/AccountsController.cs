@@ -16,7 +16,7 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             _accountService = new AccountService();
         }
 
-        [HttpGet("{customerNumber}")]
+        [HttpGet("customer/{customerNumber}")]
         public ActionResult<GetAccountsResponse> GetAccounts(int customerNumber)
         {
             GetAccountsResponse response =
@@ -71,6 +71,17 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
         public IActionResult CloseAccount(long accountNumber)
         {
             CloseAccountResponse response = _accountService.CloseAccount(accountNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
+
+        [HttpGet("{accountNumber}")]
+        public IActionResult GetAccountDetails(long accountNumber)
+        {
+            GetAccountDetailsResponse response = _accountService.GetAccountDetails(accountNumber);
 
             if (response.Success)
                 return Ok(response);
