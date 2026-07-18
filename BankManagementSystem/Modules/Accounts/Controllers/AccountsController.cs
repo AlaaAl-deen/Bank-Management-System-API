@@ -43,6 +43,17 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             return Ok(response);
         }
 
+        [HttpPatch("{accountNumber}/freeze")]
+        public IActionResult FreezeAccount(long accountNumber)
+        {
+            FreezeAccountResponse response = _accountService.FreezeAccount(accountNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
+
 
     }
 

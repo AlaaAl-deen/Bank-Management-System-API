@@ -10,6 +10,12 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// ========================
+// Seed Admin
+// ========================
+var seeder = new DatabaseSeeder();
+seeder.SeedAdmin();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

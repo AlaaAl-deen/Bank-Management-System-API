@@ -1,6 +1,7 @@
 ﻿using BankManagementSystem.Common;
 using BankManagementSystem.Modules.Accounts.Requests;
 using BankManagementSystem.Modules.Accounts.Responses;
+using BankManagementSystem.Modules.Transactions.Models;
 using BankManagementSystem.Modules.Users.Models;
 using System.Data.SqlClient;
 
@@ -366,6 +367,174 @@ namespace BankManagementSystem.Modules.Accounts.Services
 
                     return result.ToString();
                 }
+            }
+        }
+
+        private Account GetAccountByAccountNumber(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    long accountNumber)
+        {
+            const string query = @"
+    SELECT
+        AccountId,
+        AccountNumber,
+        UserId,
+        CurrencyId,
+        Balance,
+        AccountStatusId,
+        CreatedAt,
+        UpdatedAt
+    FROM Accounts
+    WHERE AccountNumber = @AccountNumber;";
+
+            using (SqlCommand command = new SqlCommand(query, connection, transaction))
+            {
+                command.Parameters.AddWithValue("@AccountNumber", accountNumber);
+
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Account
+                        {
+                            AccountId = Convert.ToInt32(reader["AccountId"]),
+                            AccountNumber = Convert.ToInt64(reader["AccountNumber"]),
+                            UserId = Convert.ToInt32(reader["UserId"]),
+                            CurrencyId = Convert.ToInt32(reader["CurrencyId"]),
+                            Balance = Convert.ToDecimal(reader["Balance"]),
+                            AccountStatusId = Convert.ToInt32(reader["AccountStatusId"]),
+                            CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+                            UpdatedAt = reader["UpdatedAt"] == DBNull.Value
+                                ? null
+                                : Convert.ToDateTime(reader["UpdatedAt"])
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private bool ValidateAccountNumber(long accountNumber)
+        {
+            return accountNumber > 0;
+        }
+
+        private bool IsAccountActive(int accountStatusId)
+        {
+            return accountStatusId == 1;
+        }
+
+        private bool IsAccountPending(int accountStatusId)
+        {
+            return accountStatusId == 2;
+        }
+
+        private bool IsAccountSuspended(int accountStatusId)
+        {
+            return accountStatusId == 3;
+        }
+
+        private bool IsAccountClosed(int accountStatusId)
+        {
+            return accountStatusId == 4;
+        }
+
+        private void FreezeAccount(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int accountId)
+        {
+            string query = @"
+        UPDATE Accounts
+        SET
+            AccountStatusId = @AccountStatusId,
+            UpdatedAt = @UpdatedAt
+        WHERE AccountId = @AccountId";
+
+            using SqlCommand command = new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@AccountStatusId", 3);
+
+            command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+
+            command.Parameters.AddWithValue("@AccountId", accountId);
+
+            command.ExecuteNonQuery();
+        }
+
+        public FreezeAccountResponse FreezeAccount(long accountNumber)
+        {
+            FreezeAccountResponse response = new();
+
+            if (!ValidateAccountNumber(accountNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid account number.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction = connection.BeginTransaction();
+
+            try
+            {
+                Account account = GetAccountByAccountNumber(
+                    connection,
+                    transaction,
+                    accountNumber);
+
+                if (account == null)
+                {
+                    response.Success = false;
+                    response.Message = "Account not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsAccountClosed(account.AccountStatusId))
+                {
+                    response.Success = false;
+                    response.Message = "Account is already closed.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsAccountSuspended(account.AccountStatusId))
+                {
+                    response.Success = false;
+                    response.Message = "Account is already suspended.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                FreezeAccount(
+                    connection,
+                    transaction,
+                    account.AccountId);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "Account suspended successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
             }
         }
 
