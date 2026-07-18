@@ -55,6 +55,18 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
         }
 
 
+        [HttpPatch("{accountNumber}/activate")]
+        public IActionResult ActivateAccount(long accountNumber)
+        {
+            ActivateAccountResponse response = _accountService.ActivateAccount(accountNumber);
+
+            if (response.Success)
+                return Ok(response);
+
+            return BadRequest(response);
+        }
+
+
     }
 
     

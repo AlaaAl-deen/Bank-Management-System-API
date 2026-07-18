@@ -538,5 +538,113 @@ namespace BankManagementSystem.Modules.Accounts.Services
             }
         }
 
+        private void ActivateAccount(
+    SqlConnection connection,
+    SqlTransaction transaction,
+    int accountId)
+        {
+            string query = @"
+        UPDATE Accounts
+        SET
+            AccountStatusId = @AccountStatusId,
+            UpdatedAt = @UpdatedAt
+        WHERE AccountId = @AccountId";
+
+            using SqlCommand command = new SqlCommand(query, connection, transaction);
+
+            command.Parameters.AddWithValue("@AccountStatusId", 1);
+
+            command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
+
+            command.Parameters.AddWithValue("@AccountId", accountId);
+
+            command.ExecuteNonQuery();
+        }
+
+        public ActivateAccountResponse ActivateAccount(long accountNumber)
+        {
+            ActivateAccountResponse response = new();
+
+            if (!ValidateAccountNumber(accountNumber))
+            {
+                response.Success = false;
+                response.Message = "Invalid account number.";
+
+                return response;
+            }
+
+            using SqlConnection connection = GetConnection();
+
+            connection.Open();
+
+            using SqlTransaction transaction = connection.BeginTransaction();
+
+            try
+            {
+                Account account = GetAccountByAccountNumber(
+                    connection,
+                    transaction,
+                    accountNumber);
+
+                if (account == null)
+                {
+                    response.Success = false;
+                    response.Message = "Account not found.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsAccountClosed(account.AccountStatusId))
+                {
+                    response.Success = false;
+                    response.Message = "Account is already closed.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                if (IsAccountActive(account.AccountStatusId))
+                {
+                    response.Success = false;
+                    response.Message = "Account is already active.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                // يسمح بالتفعيل للحسابات المجمدة فقط
+                if (!IsAccountSuspended(account.AccountStatusId))
+                {
+                    response.Success = false;
+                    response.Message = "Only suspended accounts can be activated.";
+
+                    transaction.Rollback();
+
+                    return response;
+                }
+
+                ActivateAccount(
+                    connection,
+                    transaction,
+                    account.AccountId);
+
+                transaction.Commit();
+
+                response.Success = true;
+                response.Message = "Account activated successfully.";
+
+                return response;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
     }
 }
