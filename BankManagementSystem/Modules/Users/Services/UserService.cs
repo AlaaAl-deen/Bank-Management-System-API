@@ -237,7 +237,7 @@ namespace BankManagementSystem.Modules.Users.Services
 
                     PasswordHash = PasswordHelper.HashPassword("123456"),
 
-                    MustChangePassword = true,
+                    MustChangePassword = false,
 
                     RoleId = Roles.Customer,
 

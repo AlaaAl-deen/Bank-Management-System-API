@@ -3,13 +3,19 @@ using BankManagementSystem.Common.Security;
 using BankManagementSystem.Modules.Authentication.Requests;
 using BankManagementSystem.Modules.Authentication.Responses;
 using BankManagementSystem.Modules.Users.Models;
+using BankManagementSystem.Security.Interfaces;
 using System.Data.SqlClient;
 
 namespace BankManagementSystem.Modules.Authentication.Services
 {
     public class AuthenticationService : BaseService
     {
+        private readonly IJwtService _jwtService;
 
+        public AuthenticationService(IJwtService jwtService)
+        {
+            _jwtService = jwtService;
+        }
         private void ValidateRequest(LoginRequest request)
         {
             if (request == null)
@@ -47,6 +53,8 @@ namespace BankManagementSystem.Modules.Authentication.Services
                 // 4. التحقق من حالة الحساب
                 CheckUserStatus(user);
 
+                string token = _jwtService.GenerateToken(user);
+
                 // 5. إنشاء الاستجابة
 
                 response.Success = true;
@@ -54,7 +62,10 @@ namespace BankManagementSystem.Modules.Authentication.Services
                 response.UserId = user.UserId;
                 response.CustomerNumber = user.CustomerNumber;
                 response.RoleId = user.RoleId;
-                response.MustChangePassword = user.MustChangePassword;
+                response.FirstName = user.FirstName;
+                response.LastName = user.LastName;
+              //  response.MustChangePassword = user.MustChangePassword;
+                response.Token = token;
             }
             catch (Exception ex)
             {
@@ -167,14 +178,12 @@ namespace BankManagementSystem.Modules.Authentication.Services
         UPDATE Users
         SET
             PasswordHash = @PasswordHash,
-            MustChangePassword = @MustChangePassword,
             UpdatedAt = @UpdatedAt
         WHERE UserId = @UserId";
 
                 using (SqlCommand command = new SqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@PasswordHash", passwordHash);
-                    command.Parameters.AddWithValue("@MustChangePassword", false);
                     command.Parameters.AddWithValue("@UpdatedAt", DateTime.Now);
                     command.Parameters.AddWithValue("@UserId", userId);
 

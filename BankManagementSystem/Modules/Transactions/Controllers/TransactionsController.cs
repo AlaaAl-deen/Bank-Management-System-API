@@ -2,6 +2,7 @@
 using BankManagementSystem.Modules.Transactions.Requests;
 using BankManagementSystem.Modules.Transactions.Responses;
 using BankManagementSystem.Modules.Transactions.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BankManagementSystem.Modules.Transactions.Controllers
 {
@@ -11,11 +12,11 @@ namespace BankManagementSystem.Modules.Transactions.Controllers
     {
         private readonly TransactionService _transactionService;
 
-        public TransactionsController()
+        public TransactionsController(TransactionService transactionService)
         {
-            _transactionService = new TransactionService();
+            _transactionService = transactionService;
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpPost("deposit")]
         public ActionResult<DepositResponse> Deposit([FromBody] DepositRequest request)
         {

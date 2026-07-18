@@ -1,6 +1,8 @@
-﻿using BankManagementSystem.Modules.Authentication.Requests;
+﻿using BankManagementSystem.Common.Constants;
+using BankManagementSystem.Modules.Authentication.Requests;
 using BankManagementSystem.Modules.Authentication.Responses;
 using BankManagementSystem.Modules.Authentication.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BankManagementSystem.Modules.Authentication.Controllers
@@ -11,11 +13,11 @@ namespace BankManagementSystem.Modules.Authentication.Controllers
     {
         private readonly AuthenticationService _authenticationService;
 
-        public AuthenticationController()
-        {
-            _authenticationService = new AuthenticationService();
-        }
 
+        public AuthenticationController(AuthenticationService authenticationService)
+        {
+            _authenticationService = authenticationService;
+        }
         [HttpPost("login")]
         public ActionResult<LoginResponse> Login([FromBody] LoginRequest request)
         {
@@ -35,6 +37,7 @@ namespace BankManagementSystem.Modules.Authentication.Controllers
             return Ok(response);
         }
 
+        [Authorize(Roles = "Admin,Customer")]
         [HttpPost("change-password")]
         public ActionResult<ChangePasswordResponse> ChangePassword([FromBody] ChangePasswordRequest request)
         {

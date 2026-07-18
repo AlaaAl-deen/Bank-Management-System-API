@@ -1,7 +1,10 @@
-﻿using BankManagementSystem.Modules.Accounts.Requests;
+﻿using BankManagementSystem.Common.Constants;
+using BankManagementSystem.Modules.Accounts.Requests;
 using BankManagementSystem.Modules.Accounts.Responses;
 using BankManagementSystem.Modules.Accounts.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BankManagementSystem.Modules.Accounts.Controllers
 {
@@ -10,14 +13,37 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
     public class AccountsController : ControllerBase
     {
         private readonly AccountService _accountService;
-
-        public AccountsController()
+        private int GetCurrentCustomerNumber()
         {
-            _accountService = new AccountService();
+            return int.Parse(User.FindFirst("CustomerNumber")!.Value);
         }
 
+        public AccountsController(AccountService accountService)
+        {
+            _accountService = accountService;
+        }
+        [Authorize(Roles = "Customer")]
+        // [HttpGet("customer/{customerNumber}")]
+        [HttpGet("my-accounts")]
+        public ActionResult<GetAccountsResponse> GetMyAccounts()
+        {
+            int customerNumber = int.Parse(
+        User.FindFirst("CustomerNumber")!.Value);
+
+            GetAccountsResponse response =
+                _accountService.GetAccounts(customerNumber);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
+
+        [Authorize(Roles = "Admin")]
         [HttpGet("customer/{customerNumber}")]
-        public ActionResult<GetAccountsResponse> GetAccounts(int customerNumber)
+        public ActionResult<GetAccountsResponse> GetCustomerAccounts(int customerNumber)
         {
             GetAccountsResponse response =
                 _accountService.GetAccounts(customerNumber);
@@ -30,10 +56,20 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             return Ok(response);
         }
 
-        [HttpPost("add-currency")]
-        public ActionResult<AddCurrencyAccountResponse> AddCurrency(AddCurrencyAccountRequest request)
+        [Authorize(Roles = "Customer")]
+        [HttpPost("my-accounts/add-currency")]
+        public ActionResult<AddCurrencyAccountResponse> AddCurrencyForMe(
+     AddMyCurrencyAccountRequest request)
         {
-            AddCurrencyAccountResponse response = _accountService.AddCurrencyAccount(request);
+            AddCurrencyAccountRequest serviceRequest =
+                new AddCurrencyAccountRequest
+                {
+                    CustomerNumber = GetCurrentCustomerNumber(),
+                    CurrencyId = request.CurrencyId
+                };
+
+            AddCurrencyAccountResponse response =
+                _accountService.AddCurrencyAccount(serviceRequest);
 
             if (!response.Success)
             {
@@ -43,6 +79,32 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             return Ok(response);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpPost("customer/{customerNumber}/add-currency")]
+        public ActionResult<AddCurrencyAccountResponse> AddCurrencyForCustomer(
+    int customerNumber,
+    AddMyCurrencyAccountRequest request)
+        {
+            AddCurrencyAccountRequest serviceRequest =
+                new AddCurrencyAccountRequest
+                {
+                    CustomerNumber = customerNumber,
+                    CurrencyId = request.CurrencyId
+                };
+
+            AddCurrencyAccountResponse response =
+                _accountService.AddCurrencyAccount(serviceRequest);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
+
+
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{accountNumber}/freeze")]
         public IActionResult FreezeAccount(long accountNumber)
         {
@@ -54,7 +116,7 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             return BadRequest(response);
         }
 
-
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{accountNumber}/activate")]
         public IActionResult ActivateAccount(long accountNumber)
         {
@@ -66,7 +128,7 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             return BadRequest(response);
         }
 
-
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{accountNumber}/close")]
         public IActionResult CloseAccount(long accountNumber)
         {
@@ -78,6 +140,8 @@ namespace BankManagementSystem.Modules.Accounts.Controllers
             return BadRequest(response);
         }
 
+
+        [Authorize(Roles = "Admin")]
         [HttpGet("{accountNumber}")]
         public IActionResult GetAccountDetails(long accountNumber)
         {

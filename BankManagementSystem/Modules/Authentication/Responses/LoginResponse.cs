@@ -10,6 +10,14 @@ namespace BankManagementSystem.Modules.Authentication.Responses
 
         public int RoleId { get; set; }
 
-        public bool MustChangePassword { get; set; }
+        //we added becuse JWT
+        public string FirstName { get; set; } = string.Empty;
+
+        public string LastName { get; set; } = string.Empty;
+
+        //public bool MustChangePassword { get; set; }
+
+        
+        public string Token { get; set; } = string.Empty;
     }
 }
