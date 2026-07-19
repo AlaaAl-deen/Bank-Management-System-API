@@ -2,22 +2,25 @@ using BankManagementSystem.Configurations;
 using BankManagementSystem.Database;
 using BankManagementSystem.Modules.Accounts.Services;
 using BankManagementSystem.Modules.Authentication.Services;
+using BankManagementSystem.Modules.Transactions.Services;
 using BankManagementSystem.Modules.Users.Services;
 using BankManagementSystem.Security;
 using BankManagementSystem.Security.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.OpenApi.Models;
-using BankManagementSystem.Modules.Transactions.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ==========================================
+// Services
+// ==========================================
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -51,61 +54,127 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-// JWT Configuration
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+
+// ==========================================
+// CORS
+// ==========================================
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
+// ==========================================
+// JWT
+// ==========================================
+
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("Jwt"));
 
 builder.Services.AddScoped<IJwtService, JwtService>();
+
+// ==========================================
+// Dependency Injection
+// ==========================================
+
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<TransactionService>();
 
+// ==========================================
+// Authentication
+// ==========================================
+
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme =
+        JwtBearerDefaults.AuthenticationScheme;
+
+    options.DefaultChallengeScheme =
+        JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
+    options.TokenValidationParameters =
+        new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
 
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer =
+                builder.Configuration["Jwt:Issuer"],
 
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-    };
+            ValidAudience =
+                builder.Configuration["Jwt:Audience"],
+
+            IssuerSigningKey =
+                new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(
+                        builder.Configuration["Jwt:Key"]!))
+        };
 });
 
 builder.Services.AddAuthorization();
 
+// ==========================================
+// Build
+// ==========================================
+
 var app = builder.Build();
 
+// ==========================================
+// Seed Admin (Optional)
+// ==========================================
 
-// ========================
-// Seed Admin
-// ========================
-var seeder = new DatabaseSeeder();
-seeder.SeedAdmin();
+// var seeder = new DatabaseSeeder();
+// seeder.SeedAdmin();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// ==========================================
+// Middleware
+// ==========================================
 
-app.UseHttpsRedirection();
+app.UseSwagger();
+
+app.UseSwaggerUI();
 
 app.UseAuthentication();
 
+app.UseCors("AllowAll");
+
 app.UseAuthorization();
 
+// ==========================================
+// Home Page
+// ==========================================
+
+app.MapGet("/", () =>
+{
+    return Results.Ok(new
+    {
+        Application = "Bank Management System API",
+        Version = "1.0",
+        Status = "Running",
+        Swagger = "/swagger"
+    });
+});
+
+// ==========================================
+// Controllers
+// ==========================================
+
 app.MapControllers();
+
+// ==========================================
+// Run
+// ==========================================
 
 app.Run();
